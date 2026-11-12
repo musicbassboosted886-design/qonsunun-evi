@@ -1,0 +1,301 @@
+<!doctype html><html lang="az"><meta charset="utf-8"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Qonşunun Evi</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#251e24;color:#fff;font:16px system-ui;overflow:hidden;user-select:none}canvas{width:100vw;height:100dvh;display:block;touch-action:none;image-rendering:pixelated}#hud,#msg{position:fixed;left:12px;top:12px;text-shadow:0 2px 5px #000;pointer-events:none}#msg{top:14%;color:#ffdc94}button{font:700 16px system-ui;color:#fff;background:#292231e8;border:1px solid #a38ca2;border-radius:12px;min-width:48px;min-height:44px;touch-action:none}button:active{background:#735372}#pause{position:fixed;right:10px;top:8px}#move,#act{position:fixed;bottom:max(10px,env(safe-area-inset-bottom));display:grid;gap:5px}#move{left:10px;grid-template-columns:repeat(3, minmax(44px,55px));text-align:center}#act{right:10px;grid-template-columns:repeat(2,auto)}#act button{padding:0 9px}#up{grid-column:2}#left{grid-column:1}#menu{position:fixed;inset:0;background:#130e18bb;display:grid;place-items:center;padding:18px}#menu[hidden]{display:none}section{max-width:390px;padding:20px;background:#2c2232;border:1px solid #9a7893;border-radius:16px}h1{margin:0;font-size:32px}section p{line-height:1.5}section button{padding:0 18px;background:#ffd58e;color:#241924}
+#multi{position:fixed;inset:0;display:grid;place-items:center;background:#160e1ae8;overflow:auto;padding:8px}#multi[hidden]{display:none}#multi section{width:min(620px,100%);max-width:620px;padding:12px}#multi h1{font-size:23px}#multi p{margin:5px 0;font-size:13px}#multi textarea{display:block;width:100%;user-select:text;font:13px monospace;border-radius:6px;padding:4px}#multi label{font-size:13px}.net-buttons{display:flex;gap:5px;flex-wrap:wrap}.net-buttons button,#open-multi{font-size:13px;min-height:36px;padding:0 9px}#open-multi{margin-left:6px}
+html,body{height:100%;overscroll-behavior:none}
+body{-webkit-user-select:none;-webkit-touch-callout:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;height:100dvh}
+#hud,#msg{left:calc(12px + env(safe-area-inset-left));max-width:calc(100% - 76px - env(safe-area-inset-left) - env(safe-area-inset-right))}
+#hud{top:calc(12px + env(safe-area-inset-top))}
+#pause{top:calc(8px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right))}
+#move,#act{bottom:calc(10px + env(safe-area-inset-bottom))}
+#move{left:calc(10px + env(safe-area-inset-left))}
+#act{right:calc(10px + env(safe-area-inset-right))}
+#menu,#multi{overflow:auto;place-items:safe center;padding:calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left))}
+#multi textarea{font-size:16px;-webkit-user-select:text;-webkit-touch-callout:default}
+#multi button,#open-multi{min-height:44px}
+@media (pointer:coarse) and (min-width:650px) and (min-height:500px){
+ #move{grid-template-columns:repeat(3,58px)}
+ #move button,#act button{min-height:54px}
+}
+</style><canvas width="480" height="270" aria-label="Oyun sahəsi"></canvas><strong id="hud"></strong><strong id="msg"></strong><button id="pause" aria-label="Fasilə">Ⅱ</button>
+<div id="move"><button id="up" data-move="w" aria-label="İrəli">↑</button><button id="left" data-move="a" aria-label="Sola get">←</button><button data-move="s" aria-label="Geri">↓</button><button data-move="d" aria-label="Sağa get">→</button></div>
+<div id="act"><button data-move="left" aria-label="Sola bax">⟲</button><button data-move="right" aria-label="Sağa bax">⟳</button><button data-move="c">Əyil</button><button data-move="shift">Qaç</button><button id="use" style="grid-column:span 2">Qapı / Əşya</button></div>
+<div id="menu"><section><h1>Qonşunun Evi</h1><p>Hər mərtəbədə iki əşya tap. Qonşu öz evimizə girə bilmir. Kompüterdə W və ya Ü ilə irəli get. Baxmaq üçün ekranı sürüşdür.</p><button>Başla</button><button id="open-multi">İki nəfər</button></section></div><div id="multi" hidden><section><h1>İki nəfərlik oyun</h1><p>Biriniz otaq yaratsın. O biri oyunçu kodu yapışdırıb qoşulsun. Sonra cavab kodunu otağı yaradana göndərin.</p><div class="net-buttons"><button id="host">Otaq yarat</button><button id="join">Koda qoşul</button><button id="accept">Cavabı qəbul et</button></div><label for="incoming">Gələn kod</label><textarea id="incoming" rows="2" autocomplete="off"></textarea><label for="outgoing">Çıxan kod</label><textarea id="outgoing" rows="2" readonly></textarea><div class="net-buttons"><button id="copy">Kopyala</button><button id="close-multi">Geri</button></div><p id="network-status" role="status"></p></section></div><script>
+const plans=[["################","#S....#........#","#..B..#..B..1..#","#.....#........#","####D###D#######","#..............#","#....H.........#","##D####D####D###","#.....#....#...#","#..2..#..B.#.U.#","#..B..#....#...#","################"],["################","#.....#........#","#..B..#...3....#","#.....D........#","####D###D#######","#..............#","#....H.........#","##D####D####D###","#.....#....#...#","#..4..#..B.#.S.#","#..B..#....#.U.#","################"],["################","#.....#........#","#..B..#...5....#","#.....D........#","####D###D#######","#..............#","#....H.........#","##D####D####D###","#.....#....#...#","#..6..#..B.#.S.#","#..B..#....#.X.#","################"]];
+const c=document.querySelector('canvas'), g=c.getContext('2d'), hud=document.querySelector('#hud'), msg=document.querySelector('#msg'), menu=document.querySelector('#menu');
+let w=c.width,h=c.height,depth=new Float32Array(w);
+function resizeView(){
+ const bounds=c.getBoundingClientRect();
+ const width=Math.min(480,Math.max(1,Math.round(bounds.width)));
+ const height=Math.max(1,Math.round(width*bounds.height/Math.max(1,bounds.width)));
+ if(width===w&&height===h)return;
+ c.width=w=width;
+ c.height=h=height;
+ depth=new Float32Array(w);
+}
+window.addEventListener('resize',resizeView);
+window.visualViewport?.addEventListener('resize',resizeView);
+resizeView();
+const held=new Set(), touches=new Map();
+let level=0, map, x,y,a,gx,gy,goal,patrol,last=0,opened,found,active=false,won=false,noticeUntil=0;
+const labels=['Mətbəx açarı','Pilləkən açarı','Çardaq qeydi','Zirzəmi açarı','Elektrik qoruyucusu','Çıxış açarı'];
+const rooms=['Birinci mərtəbə','İkinci mərtəbə','Zirzəmi'];
+const tile=(i,j)=>map[j]?.[i]??'#';
+const home=(x,y)=>level===0&&x>=1&&x<6&&y>=1&&y<5;
+const solid=(x,y)=>{const i=Math.floor(x),j=Math.floor(y),t=tile(i,j);return t==='#'||t==='B'||(t==='D'&&!opened.has(i+','+j));};
+const dist=Math.hypot;
+const fits=(x,y)=>[-.17,.17].every(dx=>[-.17,.17].every(dy=>!solid(x+dx,y+dy)));
+function reset(){
+ map=plans[level]; opened=new Set(); found=new Set();
+ y=map.findIndex(row=>row.includes('S'));x=map[y].indexOf('S')+.5;y+=.5;
+ a=level===0?0:-Math.PI/2;gx=6.5;gy=5.5;goal=null;patrol=0;
+}
+function say(text){msg.textContent=text;noticeUntil=performance.now()+2500;}
+function interact(){
+ if(!active)return;
+ if(role==="guest"&&connected()){send({type:"use",level,x,y,angle:a});return;}
+ for(let d=.12;d<1.36;d+=.08){
+  const i=Math.floor(x+Math.cos(a)*d),j=Math.floor(y+Math.sin(a)*d),t=tile(i,j),id=i+','+j;
+  if(t==='D'&&!opened.has(id)){opened.add(id);say('Qapı açıldı');return;}
+  if(t==='#'||t==='B')return;
+  if(/[1-6]/.test(t)&&!found.has(t)){found.add(t);say(labels[Number(t)-1]+' tapıldı');return;}
+  if(t==='U'||t==='X'){
+   if(found.size<2){say('Əvvəl iki əşya tap');return;}
+   if(level===2){won=true;pause('Evdən çıxdın!','Yenidən oyna');return;}
+   level++;reset();say(rooms[level]);return;
+  }
+ }
+}
+function sight(){
+ const n=Math.ceil(dist(x-gx,y-gy)*12);
+ for(let i=1;i<n;i++)if(solid(gx+(x-gx)*i/n,gy+(y-gy)*i/n))return false;
+ return true;
+}
+function stepTo(tx,ty){
+ const start=[Math.floor(gx),Math.floor(gy),null], q=[start], seen=new Set([start[0]+','+start[1]]);
+ for(let i=0;i<q.length;i++){
+  const [cx,cy,first]=q[i];
+  if(cx===Math.floor(tx)&&cy===Math.floor(ty))return first;
+  for(const [dx,dy] of [[0,1],[1,0],[0,-1],[-1,0]]){
+   const nx=cx+dx,ny=cy+dy,id=nx+','+ny;
+   if(seen.has(id)||solid(nx+.5,ny+.5)||home(nx+.5,ny+.5))continue;
+   seen.add(id);q.push([nx,ny,first||[nx+.5,ny+.5]]);
+  }
+ }
+ return null;
+}
+function update(dt,now){
+ const crouch=held.has('c'), f=Number(held.has('w') || held.has('ü'))-Number(held.has('s')), r=Number(held.has('d'))-Number(held.has('a'));
+ a+=(Number(held.has('right'))-Number(held.has('left')))*dt*1.75;
+ const v=(crouch?1.4:held.has('shift')?4:2.6)*dt/(dist(f,r)||1);
+ const dx=(Math.cos(a)*f-Math.sin(a)*r)*v,dy=(Math.sin(a)*f+Math.cos(a)*r)*v;
+ if(fits(x+dx,y))x+=dx;if(fits(x,y+dy))y+=dy;
+ if(role==="guest"&&connected()){
+  hud.textContent=(home(x,y)?"Bizim ev · Təhlükəsiz yer":rooms[level])+" | Əşyalar "+found.size+"/2";
+  if(!home(x,y)&&dist(x-gx,y-gy)<.48){const row=map.findIndex(r=>r.includes("S"));x=map[row].indexOf("S")+.5;y=row+.5;say("Qonşu səni tutdu. Girişə qayıtdın.");}
+  if(now>noticeUntil)msg.textContent="";return;
+ }
+ const safe=home(x,y),hidden=safe||(crouch&&tile(x|0,y|0)==='H');
+ const chase=!hidden&&dist(x-gx,y-gy)<(crouch?2.2:held.has('shift')?6:4.3)&&sight();
+ const route=[[3.5,5.5],[10.5,5.5],[6.5,6.5]];
+ if(!goal){
+  const target=chase?[x,y]:route[patrol];
+  goal=stepTo(...target);
+  if(!goal&&chase)goal=target;
+  else if(!goal)patrol=(patrol+1)%route.length;
+ }
+ if(goal){
+  const dx=goal[0]-gx,dy=goal[1]-gy,d=dist(dx,dy),m=Math.min(1,(chase?3:1.15)*dt/(d||1));
+  const nx=gx+dx*m,ny=gy+dy*m;
+  if(!home(nx,ny)&&!solid(nx,ny)){gx=nx;gy=ny;}else goal=null;
+  if(m===1)goal=null;
+ }
+ if(!hidden&&dist(x-gx,y-gy)<.48){reset();pause('Qonşu səni tutdu','Yenidən cəhd et');}
+ hud.textContent=(safe?'Bizim ev · Təhlükəsiz yer':rooms[level])+'   |   Əşyalar '+found.size+'/2'+(chase?'   ⚠':'');
+ if(now>noticeUntil)msg.textContent='';
+}
+function draw(){
+ const lens=Math.min(w*.74,h*1.3);
+ const hz=h/2-(held.has('c')?Math.min(15,h*.055):0);
+ g.fillStyle='#25202a';g.fillRect(0,0,w,hz);g.fillStyle='#4c3228';g.fillRect(0,hz,w,h-hz);
+ const fx=Math.cos(a),fy=Math.sin(a);
+ for(let col=0;col<w;col++){
+  const camera=(col-w/2)/lens,rx=fx-fy*camera,ry=fy+fx*camera;
+  let d=.03;while(d<22&&!solid(x+rx*d,y+ry*d))d+=.04;
+  depth[col]=d;
+  const t=tile(Math.floor(x+rx*d),Math.floor(y+ry*d)),light=.25+.75/(1+d*.26),size=lens*.675/d;
+  const color=t==='D'?[174,91,55]:t==='B'?[117,127,76]:home(x,y)?[152,218,210]:[215,163,113];
+  g.fillStyle='rgb('+color.map(n=>Math.round(n*light)).join(',')+')';
+  g.fillRect(col,hz-size/2,1,size);
+ }
+ const sprites=[[gx,gy,'G']]; if(partner&&connected())sprites.push([partner.x,partner.y,'P']);
+ map.forEach((row,j)=>Array.from(row).forEach((t,i)=>{if(('UXH'.includes(t)||/[1-6]/.test(t))&&!found.has(t))sprites.push([i+.5,j+.5,t]);}));
+ sprites.sort((p,q)=>(q[0]-p[0])*fx+(q[1]-p[1])*fy);
+ for(const [sx,sy,t] of sprites){
+  const dx=sx-x,dy=sy-y,z=dx*fx+dy*fy;
+  if(z<.14)continue;
+  const cx=w/2+lens*(-dx*fy+dy*fx)/z,r=lens*.13/z,big='GPUX'.includes(t);
+  g.fillStyle=t==='G'?'#ec6674':t==='P'?'#bb91ff':t==='H'?'#78b5f0':big?'#67d4a6':'#ffd56c';
+  for(let col=Math.max(0,Math.ceil(cx-r));col<Math.min(w,cx+r);col++)
+   if(z<depth[col])g.fillRect(col,big?hz-r*1.4:hz+r*.5,1,big?r*2.8:r*.6);
+ }
+}
+function pause(title,button){
+ active=false;held.clear();touches.clear();look=null;menu.hidden=false;
+ menu.querySelector('h1').textContent=title;menu.querySelector('button').textContent=button;
+}
+menu.querySelector('button').onclick=()=>{if(won){level=0;won=false;reset();}active=true;menu.hidden=true;};
+document.querySelectorAll('[data-move]').forEach(button=>{
+ button.onpointerdown=e=>{e.preventDefault();button.setPointerCapture(e.pointerId);touches.set(e.pointerId,button.dataset.move);held.add(button.dataset.move);};
+ const release=e=>{const key=touches.get(e.pointerId);touches.delete(e.pointerId);if(key&&![...touches.values()].includes(key))held.delete(key);};
+ button.onpointerup=button.onpointercancel=button.onlostpointercapture=release;
+});
+document.querySelector('#use').onclick=interact;
+document.querySelector('#pause').onclick=()=>pause('Fasilə','Davam et');
+let look=null;
+c.onpointerdown=e=>{if(!active||look)return;c.setPointerCapture(e.pointerId);look={id:e.pointerId,x:e.clientX};};
+c.onpointermove=e=>{if(active&&look?.id===e.pointerId){a+=(e.clientX-look.x)*.009;look.x=e.clientX;}};
+c.onpointerup=c.onpointercancel=c.onlostpointercapture=e=>{if(look?.id===e.pointerId)look=null;};
+function movementKey(event){
+ const key=event.key.toLowerCase();
+ return key==='ü' ? 'ü' : event.code==='KeyW' ? 'w' : key;
+}
+window.onkeydown=e=>{
+ if(e.target?.matches?.('input, textarea, [contenteditable]'))return;
+ const key=movementKey(e);
+ if(key==='e'){
+  if(!e.repeat)interact();
+ }else if(key==='escape'&&active){
+  pause('Fasilə','Davam et');
+ }else if(active){
+  held.add(key);
+ }
+};
+window.onkeyup=e=>held.delete(movementKey(e));
+window.onblur=()=>{if(active)pause('Fasilə','Davam et');};
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&active)pause('Fasilə','Davam et');});
+function frame(now){if(active)update(Math.min(.04,(now-last)/1000),now);if(connected()&&now>=nextSync){send(role==="host"?snapshot():{type:"position",level,x,y});nextSync=now+90;}last=now;draw();requestAnimationFrame(frame);}
+
+const multiplayer=document.querySelector('#multi');
+const incoming=document.querySelector('#incoming'), outgoing=document.querySelector('#outgoing');
+const networkStatus=document.querySelector('#network-status');
+let peer=null, channel=null, role=null, partner=null, nextSync=0;
+function connected(){return channel?.readyState==='open';}
+function send(data){
+ if(connected()&&channel.bufferedAmount<32768)channel.send(JSON.stringify(data));
+}
+function snapshot(){
+ return {type:'state',level,doors:[...opened],items:[...found],gx,gy,won,x,y};
+}
+function validPosition(value){
+ return Number.isFinite(value.x)&&Number.isFinite(value.y)&&fits(value.x,value.y);
+}
+function receive(event){
+ if(typeof event.data!=='string'||event.data.length>8192)return;
+ let data;
+ try{data=JSON.parse(event.data);}catch{return;}
+ if(!data||typeof data!=='object')return;
+ if(role==='host'&&data.level===level&&validPosition(data)){
+  if(data.type==='position')partner={x:data.x,y:data.y};
+  if(data.type==='use'&&Number.isFinite(data.angle)&&active){
+   const original=[x,y,a], oldLevel=level;
+   x=data.x;y=data.y;a=data.angle;
+   try{interact();}finally{if(level===oldLevel)[x,y,a]=original;else partner=null;}
+   send(snapshot());
+  }
+ }
+ if(role==='guest'&&data.type==='state'&&Number.isInteger(data.level)&&plans[data.level]&&Array.isArray(data.doors)&&Array.isArray(data.items)){
+  if(level!==data.level){level=data.level;reset();say(rooms[level]);}
+  opened=new Set(data.doors);found=new Set(data.items);
+  if(validPosition(data))partner={x:data.x,y:data.y};
+  if(Number.isFinite(data.gx)&&Number.isFinite(data.gy)){gx=data.gx;gy=data.gy;}
+  if(data.won&&!won){won=true;pause('Evdən birlikdə çıxdınız!','Menyu');}
+  else if(!data.won&&won){won=false;reset();}
+ }
+}
+function attach(dataChannel){
+ channel=dataChannel;
+ channel.onmessage=receive;
+ channel.onopen=()=>{
+  networkStatus.textContent='Qoşuldunuz!';
+  multiplayer.hidden=true;
+  menu.hidden=true;active=true;
+  if(role==='host')send(snapshot());
+ };
+ channel.onclose=()=>{
+  partner=null;
+  pause('Bağlantı kəsildi','Tək oyna');
+  networkStatus.textContent='Bağlantı kəsildi. Yenidən otaq yaratmaq olar.';
+ };
+}
+function createPeer(mode){
+ if(channel){channel.onclose=null;channel.close();}
+ if(peer)peer.close();
+ partner=null;channel=null;role=mode;
+ peer=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+ peer.ondatachannel=event=>attach(event.channel);
+ return peer;
+}
+function waitForCandidates(connection){
+ if(connection.iceGatheringState==='complete')return Promise.resolve();
+ return new Promise(resolve=>{
+  const done=()=>{clearTimeout(timer);connection.removeEventListener('icegatheringstatechange',change);resolve();};
+  const change=()=>{if(connection.iceGatheringState==='complete')done();};
+  const timer=setTimeout(done,6500);
+  connection.addEventListener('icegatheringstatechange',change);
+ });
+}
+async function outputCode(connection,description){
+ await connection.setLocalDescription(description);
+ await waitForCandidates(connection);
+ outgoing.value=btoa(JSON.stringify(connection.localDescription));
+}
+function inputCode(type){
+ const raw=incoming.value.trim();
+ if(raw.length>40000)throw Error('Kod çox uzundur.');
+ const parsed=JSON.parse(atob(raw));
+ if(parsed.type!==type||typeof parsed.sdp!=='string')throw Error('Kod uyğun gəlmir.');
+ return parsed;
+}
+function networkAction(id,action){
+ const button=document.querySelector(id);
+ button.onclick=async()=>{
+  button.disabled=true;
+  networkStatus.textContent='Hazırlanır…';
+  try{await action();}catch{networkStatus.textContent='Alınmadı. Kodu yoxla və yenidən sına.';}
+  finally{button.disabled=false;}
+ };
+}
+networkAction('#host',async()=>{
+ const connection=createPeer('host');
+ attach(connection.createDataChannel('qonsu'));
+ await outputCode(connection,await connection.createOffer());
+ networkStatus.textContent='Çıxan kodu dostuna göndər. Cavab kodunu bura yapışdır.';
+});
+networkAction('#join',async()=>{
+ const offer=inputCode('offer'),connection=createPeer('guest');
+ await connection.setRemoteDescription(offer);
+ await outputCode(connection,await connection.createAnswer());
+ networkStatus.textContent='Çıxan cavab kodunu otağı yaradana göndər.';
+});
+networkAction('#accept',async()=>{
+ if(role!=='host'||!peer)throw Error('Əvvəl otaq yarat.');
+ await peer.setRemoteDescription(inputCode('answer'));
+ networkStatus.textContent='Qoşulur…';
+});
+document.querySelector('#copy').onclick=async()=>{
+ if(!outgoing.value)return;
+ try{
+  if(navigator.clipboard)await navigator.clipboard.writeText(outgoing.value);
+  else {outgoing.select();if(!document.execCommand('copy'))throw Error();}
+  networkStatus.textContent='Kod kopyalandı.';
+ }catch{outgoing.focus();outgoing.select();networkStatus.textContent='Seçilmiş kodu əl ilə kopyala.';}
+};
+document.querySelector('#open-multi').onclick=()=>{multiplayer.hidden=false;};
+document.querySelector('#close-multi').onclick=()=>{multiplayer.hidden=true;};
+
+reset();requestAnimationFrame(frame);
+</script></html>
+
+
